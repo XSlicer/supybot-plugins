@@ -33,29 +33,23 @@ from supybot.commands import *
 import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
-from socket import gethostbyname
-from urllib import urlencode
+import xml.etree.ElementTree as ET
 from urllib2 import urlopen
-from BeautifulSoup import BeautifulSoup, SoupStrainer
+from socket import gethostbyname
 
 class IPTools(callbacks.Plugin):
     """IP address utilities."""
     
     def locate(self, irc, msg, args, ip):
       """<ip> - Looks up geolocation information about the given 
-      IP address from http://blogama.org/ip_query.php"""
+      IP address from http://www.ip-adress.com/ip_tracer/"""
+
+      tree = ET.parse(urlopen('http://freegeoip.net/xml/' + ip))
+      root = tree.getroot()
       
-      response = urlopen("http://blogama.org/ip_query.php?ip=%(ip)s&output=xml" % { 'ip' : ip })
-      soup = BeautifulSoup(response)
-      location = []
-      for field in ['city','regionname','countryname']:
-        value = soup.find(field).find(text=True)
-        if value != None:
-          location.append(value)
-      lat = soup.find('latitude').find(text=True)
-      lng = soup.find('longitude').find(text=True)
-      response = "%(ip)s: %(location)s (%(lat)s, %(lng)s)" % { 'ip' : ip, 'location' : ', '.join(location), 'lat' : lat, 'lng' : lng }
-      irc.reply(response,prefixNick=True)
+      irc.reply("Country: " + root[2].text + ", State/Province: " + \
+                root[4].text + ", City: " + root[5].text + ", ZIP: " + \
+                root[6].text,prefixNick=True)
     locate = wrap(locate, ['ip'])
     
     def lookup(self, irc, msg, args, hostname):
